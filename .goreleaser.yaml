@@ -1,0 +1,30 @@
+version: 2
+
+builds:
+  - main: ./cmd/cli
+    binary: envsh
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+archives:
+  - format: tar.gz
+    name_template: "envsh_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+
+release:
+  github:
+    owner: envshq
+    name: envsh
