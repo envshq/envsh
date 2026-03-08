@@ -1,0 +1,27 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+  disable:
+    - depguard
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/envshq/envsh
+
+issues:
+  exclude-rules:
+    # Test files can use t.Fatal instead of wrapped errors
+    - path: _test\.go
+      linters:
+        - errcheck
