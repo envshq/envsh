@@ -1,39 +1,32 @@
 # envsh
 
-Open-source CLI and cryptographic library for [envsh](https://github.com/envshq/envsh) — zero-knowledge secret sync.
+Zero-knowledge secret sync. The server can't read your secrets — by design, not by promise.
 
-> "The only secrets manager that can't read your secrets."
-
-## What's in here
-
-- **`pkg/crypto/`** — MIT-licensed cryptographic library (AES-256-GCM, Ed25519↔X25519, HKDF, SSH key parsing)
-- **`pkg/sdk/`** — Go SDK client for the envsh API
-- **`cmd/cli/`** — The `envsh` CLI binary
-
-## Quick start
+## Install
 
 ```bash
-make build              # compile → bin/envsh
-./bin/envsh --help
-
-make test               # all tests with race detector
-make test-crypto        # crypto library tests only (verbose)
+curl -fsSL https://envsh.dev/install.sh | sh
 ```
 
-For full setup instructions see [`DEV_GUIDE.md`](../DEV_GUIDE.md).
+## Usage
 
-## Crypto library
-
-```go
-import "github.com/envshq/envsh/pkg/crypto"
-
-// Encrypt for multiple recipients (SSH public keys)
-bundle, err := crypto.EncryptForRecipients(plaintext, recipients)
-
-// Decrypt with your private key
-plaintext, err := crypto.DecryptWithPrivateKey(bundle, privKey, fingerprint, "ed25519")
+```bash
+envsh login                          # authenticate
+envsh push -p myapp -e production    # encrypt & push secrets
+envsh pull -p myapp -e production    # pull & decrypt secrets
+envsh run -p myapp -e production -- node app.js  # inject into process
 ```
 
-## Module
+## Documentation
 
-`github.com/envshq/envsh` — Go 1.22+ — MIT License
+Full docs at **[envsh.dev](https://envsh.dev)**
+
+## What's in this repo
+
+- **`cmd/cli/`** — The `envsh` CLI
+- **`pkg/crypto/`** — Cryptographic library (AES-256-GCM, Ed25519, X25519, HKDF)
+- **`pkg/sdk/`** — Go SDK client
+
+## License
+
+MIT
