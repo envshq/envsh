@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	crypto "github.com/envshq/envsh/pkg/crypto"
 )
 
 var loginCmd = &cobra.Command{
@@ -132,10 +134,16 @@ func registerDefaultSSHKey(token string) error {
 		if err != nil {
 			continue
 		}
-		label := "default"
+		pubKeyStr := strings.TrimSpace(string(data))
+		keyType, _, fingerprint, err := crypto.ParseSSHPublicKey(pubKeyStr)
+		if err != nil {
+			continue
+		}
 		resp, err := apiRequest("POST", "/keys", map[string]string{
-			"public_key": strings.TrimSpace(string(data)),
-			"label":      label,
+			"public_key":  pubKeyStr,
+			"fingerprint": fingerprint,
+			"key_type":    keyType,
+			"label":       "default",
 		}, token)
 		if err != nil {
 			continue

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	crypto "github.com/envshq/envsh/pkg/crypto"
 )
 
 var keysCmd = &cobra.Command{
@@ -79,14 +81,23 @@ func runKeysAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("reading key file %s: %w", keyPath, err)
 	}
 
+	pubKeyStr := strings.TrimSpace(string(data))
+
+	keyType, _, fingerprint, err := crypto.ParseSSHPublicKey(pubKeyStr)
+	if err != nil {
+		return fmt.Errorf("parsing SSH key: %w", err)
+	}
+
 	label := keysAddLabel
 	if label == "" {
 		label = keyPath
 	}
 
 	resp, err := apiRequest("POST", "/keys", map[string]string{
-		"public_key": strings.TrimSpace(string(data)),
-		"label":      label,
+		"public_key":  pubKeyStr,
+		"fingerprint": fingerprint,
+		"key_type":    keyType,
+		"label":       label,
 	}, token)
 	if err != nil {
 		return fmt.Errorf("registering key: %w", err)
