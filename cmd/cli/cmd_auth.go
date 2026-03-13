@@ -67,7 +67,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 			ID    string `json:"id"`
 			Email string `json:"email"`
 		} `json:"user"`
-		WorkspaceID string `json:"workspace_id"`
+		Workspace struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"workspace"`
 	}
 	resp2, err := apiRequest("POST", "/auth/email-verify", map[string]string{
 		"email": email,
@@ -89,10 +93,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		creds = &Credentials{Tokens: make(map[string]*TokenData)}
 	}
-	wsID := verifyResp.WorkspaceID
-	if wsID == "" {
-		wsID = verifyResp.User.ID // fallback
-	}
+	wsID := verifyResp.Workspace.ID
 	creds.Tokens[wsID] = &TokenData{
 		AccessToken:  verifyResp.Token,
 		RefreshToken: verifyResp.RefreshToken,

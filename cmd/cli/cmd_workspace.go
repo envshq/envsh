@@ -7,11 +7,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// workspaceCmd shows workspace information.
+// workspaceCmd shows workspace information (default when no subcommand given).
 var workspaceCmd = &cobra.Command{
 	Use:   "workspace",
-	Short: "Show workspace information",
+	Short: "Manage workspaces",
 	RunE:  runWorkspace,
+}
+
+// workspaceListCmd lists all workspaces the user belongs to.
+var workspaceListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all workspaces you belong to",
+	RunE:  runWorkspaceList,
+}
+
+// workspaceSwitchCmd switches the active workspace.
+var workspaceSwitchCmd = &cobra.Command{
+	Use:   "switch WORKSPACE_ID",
+	Short: "Switch to a different workspace",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runWorkspaceSwitch,
 }
 
 // inviteCmd invites a team member.
@@ -41,6 +56,7 @@ var inviteRole string
 
 func init() {
 	inviteCmd.Flags().StringVar(&inviteRole, "role", "member", "role: admin or member")
+	workspaceCmd.AddCommand(workspaceListCmd, workspaceSwitchCmd)
 	rootCmd.AddCommand(workspaceCmd, inviteCmd, membersCmd, removeCmd)
 }
 
@@ -62,6 +78,100 @@ func runWorkspace(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("decoding response: %w", err)
 	}
 	return PrintJSON(ws)
+}
+
+func runWorkspaceList(cmd *cobra.Command, args []string) error {
+	token, err := getToken()
+	if err != nil {
+		return err
+	}
+	resp, err := apiRequest("GET", "/workspaces", nil, token)
+	if err != nil {
+		return fmt.Errorf("fetching workspaces: %w", err)
+	}
+	defer resp.Body.Close()
+	if err := checkAPIError(resp); err != nil {
+		return err
+	}
+	var result struct {
+		Workspaces []struct {
+			WorkspaceID string `json:"workspace_id"`
+			Name        string `json:"name"`
+			Slug        string `json:"slug"`
+			Role        string `json:"role"`
+		} `json:"workspaces"`
+		CurrentWorkspaceID string `json:"current_workspace_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
+	}
+	rows := make([][]string, len(result.Workspaces))
+	for i, ws := range result.Workspaces {
+		active := ""
+		if ws.WorkspaceID == result.CurrentWorkspaceID {
+			active = "*"
+		}
+		rows[i] = []string{active, ws.Name, ws.Slug, ws.Role, ws.WorkspaceID}
+	}
+	PrintTable([]string{"", "NAME", "SLUG", "ROLE", "ID"}, rows)
+	return nil
+}
+
+func runWorkspaceSwitch(cmd *cobra.Command, args []string) error {
+	targetID := args[0]
+	token, err := getToken()
+	if err != nil {
+		return err
+	}
+	resp, err := apiRequest("POST", "/workspaces/switch", map[string]string{
+		"workspace_id": targetID,
+	}, token)
+	if err != nil {
+		return fmt.Errorf("switching workspace: %w", err)
+	}
+	defer resp.Body.Close()
+	if err := checkAPIError(resp); err != nil {
+		return err
+	}
+	var result struct {
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
+		WorkspaceID  string `json:"workspace_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
+	}
+
+	// Save new tokens for the target workspace.
+	creds, err := LoadCredentials()
+	if err != nil {
+		creds = &Credentials{Tokens: make(map[string]*TokenData)}
+	}
+	// Preserve email from current token.
+	email := ""
+	if td, _ := GetActiveToken(); td != nil {
+		email = td.Email
+	}
+	creds.Tokens[result.WorkspaceID] = &TokenData{
+		AccessToken:  result.Token,
+		RefreshToken: result.RefreshToken,
+		Email:        email,
+		WorkspaceID:  result.WorkspaceID,
+	}
+	if err := SaveCredentials(creds); err != nil {
+		return fmt.Errorf("saving credentials: %w", err)
+	}
+
+	// Update active workspace in config.
+	cfg, err := LoadConfig()
+	if err != nil {
+		cfg = DefaultConfig()
+	}
+	cfg.ActiveWorkspace = result.WorkspaceID
+	_ = SaveConfig(cfg)
+
+	PrintSuccess(fmt.Sprintf("Switched to workspace %s", result.WorkspaceID))
+	return nil
 }
 
 func runInvite(cmd *cobra.Command, args []string) error {
