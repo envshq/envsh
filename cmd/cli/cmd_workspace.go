@@ -244,8 +244,8 @@ func runRemoveMember(cmd *cobra.Command, args []string) error {
 	}
 	var result struct {
 		Members []struct {
-			ID    string `json:"id"`
-			Email string `json:"email"`
+			UserID string `json:"user_id"`
+			Email  string `json:"email"`
 		} `json:"members"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -255,7 +255,7 @@ func runRemoveMember(cmd *cobra.Command, args []string) error {
 	var userID string
 	for _, m := range result.Members {
 		if m.Email == email {
-			userID = m.ID
+			userID = m.UserID
 			break
 		}
 	}
