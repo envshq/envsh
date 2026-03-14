@@ -110,7 +110,8 @@ func getToken() (string, error) {
 	return td.AccessToken, nil
 }
 
-// fetchRecipientKeys fetches all registered SSH public keys for all workspace members.
+// fetchRecipientKeys fetches all registered SSH public keys for all workspace members
+// and active machine keys, so pushers encrypt for both humans and machines.
 func fetchRecipientKeys(token string) ([]crypto.RecipientKey, error) {
 	resp, err := apiRequest("GET", "/keys/workspace", nil, token)
 	if err != nil {
@@ -127,11 +128,16 @@ func fetchRecipientKeys(token string) ([]crypto.RecipientKey, error) {
 			KeyType     string `json:"key_type"`
 			Fingerprint string `json:"fingerprint"`
 		} `json:"keys"`
+		MachineKeys []struct {
+			ID             string `json:"id"`
+			PublicKey      string `json:"public_key"`
+			KeyFingerprint string `json:"key_fingerprint"`
+		} `json:"machine_keys"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decoding keys response: %w", err)
 	}
-	recipients := make([]crypto.RecipientKey, 0, len(result.Keys))
+	recipients := make([]crypto.RecipientKey, 0, len(result.Keys)+len(result.MachineKeys))
 	for _, k := range result.Keys {
 		keyType, pubKeyBytes, fp, err := crypto.ParseSSHPublicKey(k.PublicKey)
 		if err != nil {
@@ -141,6 +147,18 @@ func fetchRecipientKeys(token string) ([]crypto.RecipientKey, error) {
 		recipients = append(recipients, crypto.RecipientKey{
 			KeyFingerprint: fp,
 			KeyType:        keyType,
+			PublicKey:      pubKeyBytes,
+		})
+	}
+	// Machine keys are stored as base64 of raw Ed25519 public key bytes.
+	for _, mk := range result.MachineKeys {
+		pubKeyBytes, err := base64.StdEncoding.DecodeString(mk.PublicKey)
+		if err != nil {
+			continue
+		}
+		recipients = append(recipients, crypto.RecipientKey{
+			KeyFingerprint: mk.KeyFingerprint,
+			KeyType:        "ed25519",
 			PublicKey:      pubKeyBytes,
 		})
 	}

@@ -122,9 +122,21 @@ func splitLines(s string) []string {
 // It returns the plaintext and the version number.
 func pullDecrypt(token, project, environment, keyPath string) (plaintext []byte, version int, err error) {
 	// Resolve project ID.
-	projectID, err := resolveProjectID(token, project)
-	if err != nil {
-		return nil, 0, err
+	// Machine tokens contain project_id in claims — extract directly since
+	// machines can't access the human-only GET /projects endpoint.
+	var projectID string
+	if os.Getenv("ENVSH_MACHINE_KEY") != "" {
+		pid, err := extractProjectIDFromToken(token)
+		if err != nil {
+			return nil, 0, fmt.Errorf("extracting project from machine token: %w", err)
+		}
+		projectID = pid
+	} else {
+		pid, err := resolveProjectID(token, project)
+		if err != nil {
+			return nil, 0, err
+		}
+		projectID = pid
 	}
 
 	// GET /secrets/pull
@@ -227,6 +239,29 @@ func pullDecrypt(token, project, environment, keyPath string) (plaintext []byte,
 	}
 
 	return pt, bundle.Version, nil
+}
+
+// extractProjectIDFromToken decodes a JWT payload (without verification) to extract the project_id claim.
+// Machine tokens embed project_id in their claims, so we can skip the /projects API call.
+func extractProjectIDFromToken(token string) (string, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("invalid token format")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", fmt.Errorf("decoding token payload: %w", err)
+	}
+	var claims struct {
+		ProjectID string `json:"project_id"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return "", fmt.Errorf("parsing token claims: %w", err)
+	}
+	if claims.ProjectID == "" {
+		return "", fmt.Errorf("no project_id in token claims")
+	}
+	return claims.ProjectID, nil
 }
 
 // loadPrivateKey loads an Ed25519 private key seed.
