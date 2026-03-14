@@ -74,11 +74,11 @@ func runMachineCreate(cmd *cobra.Command, args []string) error {
 
 	// Register the machine on the server.
 	resp, err := apiRequest("POST", "/machines", map[string]any{
-		"name":        name,
-		"project_id":  projectID,
-		"environment": machineCreateEnv,
-		"public_key":  base64.StdEncoding.EncodeToString(publicKey),
-		"fingerprint": fingerprint,
+		"name":            name,
+		"project_id":      projectID,
+		"environment":     machineCreateEnv,
+		"public_key":      base64.StdEncoding.EncodeToString(publicKey),
+		"key_fingerprint": fingerprint,
 	}, token)
 	if err != nil {
 		return fmt.Errorf("creating machine: %w", err)

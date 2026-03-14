@@ -97,7 +97,12 @@ func runPush(cmd *cobra.Command, args []string) error {
 }
 
 // getToken returns the active access token or an error if not logged in.
+// If ENVSH_MACHINE_KEY is set, performs machine challenge-response auth instead.
 func getToken() (string, error) {
+	machineKey := os.Getenv("ENVSH_MACHINE_KEY")
+	if machineKey != "" {
+		return getMachineToken(machineKey)
+	}
 	td, err := GetActiveToken()
 	if err != nil {
 		return "", fmt.Errorf("not logged in — run: envsh login")

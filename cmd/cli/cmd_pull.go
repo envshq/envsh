@@ -229,9 +229,22 @@ func pullDecrypt(token, project, environment, keyPath string) (plaintext []byte,
 	return pt, bundle.Version, nil
 }
 
-// loadPrivateKey loads an Ed25519 private key seed from the given path (or default).
-// It returns the 32-byte seed, the fingerprint, and the key type.
+// loadPrivateKey loads an Ed25519 private key seed.
+// If ENVSH_MACHINE_KEY is set, uses that. Otherwise reads from keyPath (or default ~/.ssh/id_ed25519).
+// Returns the 32-byte seed, the fingerprint, and the key type.
 func loadPrivateKey(keyPath string) (seed []byte, fingerprint string, keyType string, err error) {
+	// Machine key takes precedence.
+	if machineKey := os.Getenv("ENVSH_MACHINE_KEY"); machineKey != "" {
+		s, parseErr := crypto.ParseMachineKey(machineKey)
+		if parseErr != nil {
+			return nil, "", "", fmt.Errorf("parsing machine key: %w", parseErr)
+		}
+		privKey := ed25519.NewKeyFromSeed(s)
+		pubKey := privKey.Public().(ed25519.PublicKey)
+		fp := crypto.ComputeFingerprint([]byte(pubKey))
+		return s, fp, "ed25519", nil
+	}
+
 	if keyPath == "" {
 		home, homeErr := os.UserHomeDir()
 		if homeErr != nil {
