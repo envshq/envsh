@@ -13,10 +13,10 @@ curl -fsSL https://envsh.dev/install.sh | sh
 ## Usage
 
 ```bash
-envsh login                                        # authenticate with email
-envsh push .env -p myapp -e production             # encrypt & upload
-envsh pull production -p myapp                     # download & decrypt
-envsh run production -p myapp -- node server.js    # inject secrets into process
+envsh login                                              # authenticate with email
+envsh push .env --project myapp --env production         # encrypt & upload
+envsh pull production --project myapp                    # download & decrypt
+envsh run production --project myapp -- node server.js   # inject secrets into process
 ```
 
 ## How it works
