@@ -105,11 +105,9 @@ func getToken() (string, error) {
 	return td.AccessToken, nil
 }
 
-// fetchRecipientKeys fetches all registered SSH public keys in the workspace.
-// For V1, it fetches the current user's keys. When multi-recipient support is
-// added, this will fetch all workspace members' keys.
+// fetchRecipientKeys fetches all registered SSH public keys for all workspace members.
 func fetchRecipientKeys(token string) ([]crypto.RecipientKey, error) {
-	resp, err := apiRequest("GET", "/keys", nil, token)
+	resp, err := apiRequest("GET", "/keys/workspace", nil, token)
 	if err != nil {
 		return nil, fmt.Errorf("fetching keys: %w", err)
 	}
