@@ -16,7 +16,7 @@ curl -fsSL https://envsh.dev/install.sh | sh
 envsh login                                              # authenticate with email
 envsh push .env --project myapp --env production         # encrypt & upload
 envsh pull production --project myapp                    # download & decrypt
-envsh run production --project myapp -- node server.js   # inject secrets into process
+envsh run --project myapp production -- node server.js   # inject secrets into process
 ```
 
 ## How it works
@@ -45,7 +45,7 @@ Machine identities for pipelines. Each scoped to one project + one environment, 
 ```bash
 envsh machine create ci-prod -p myapp -e production
 # Set ENVSH_MACHINE_KEY in your CI secrets, then:
-envsh run production -p myapp -- ./deploy.sh
+envsh run --project myapp production -- ./deploy.sh
 ```
 
 Works with GitHub Actions, GitLab CI, Bitbucket, CircleCI. [Full guide](https://envsh.dev/guides/cicd/).
