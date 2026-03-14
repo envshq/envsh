@@ -71,7 +71,11 @@ func checkAPIError(resp *http.Response) error {
 		return fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 	if ae.Error.Code != "" {
-		return fmt.Errorf("%s: %s", ae.Error.Code, ae.Error.Message)
+		msg := fmt.Sprintf("%s: %s", ae.Error.Code, ae.Error.Message)
+		if ae.Error.Message == "access revoked" {
+			msg += "\n\nhint: you were removed from this workspace. Run:\n  envsh workspace list\n  envsh workspace switch <WORKSPACE_ID>"
+		}
+		return fmt.Errorf("%s", msg)
 	}
 	return fmt.Errorf("HTTP %d", resp.StatusCode)
 }
